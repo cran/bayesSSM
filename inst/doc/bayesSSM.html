@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>bayesSSM</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">bayesSSM</h1>
+
+
+
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(bayesSSM)</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span></code></pre></div>
+<p>We will show how to fit the following SSM model using the
+<code>bayesSSM</code> package:</p>
+<p><span class="math display">\[\begin{align*}
+        X_1 &amp;\sim N(0,\, 1) \\
+        X_t&amp;=\phi X_{t-1}+\sin(X_{t-1})+\sigma_x V_t, \quad V_t \sim
+N(0, \, 1) \\
+        Y_t&amp;=X_t+\sigma_y W_t, \quad W_t \sim N(0, \, 1),
+\end{align*}\]</span> that is <span class="math inline">\(X_t\)</span>
+is a latent state and <span class="math inline">\(Y_t\)</span> is an
+observed value. The parameters of the model are <span class="math inline">\(\phi\)</span>, <span class="math inline">\(\sigma_x\)</span>, and <span class="math inline">\(\sigma_y\)</span>.</p>
+<p>First, we will simulate some data from this model:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">1405</span>)</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>t_val <span class="ot">&lt;-</span> <span class="dv">50</span></span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>phi_true <span class="ot">&lt;-</span> <span class="fl">0.8</span></span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a>sigma_x_true <span class="ot">&lt;-</span> <span class="dv">1</span></span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a>sigma_y_true <span class="ot">&lt;-</span> <span class="fl">0.5</span></span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a>x <span class="ot">&lt;-</span> <span class="fu">numeric</span>(t_val)</span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a>y <span class="ot">&lt;-</span> <span class="fu">numeric</span>(t_val)</span>
+<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a>x[<span class="dv">1</span>] <span class="ot">&lt;-</span> <span class="fu">rnorm</span>(<span class="dv">1</span>)</span>
+<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a>y[<span class="dv">1</span>] <span class="ot">&lt;-</span> x[<span class="dv">1</span>] <span class="sc">+</span> sigma_y_true <span class="sc">*</span> <span class="fu">rnorm</span>(<span class="dv">1</span>)</span>
+<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a><span class="cf">for</span> (t <span class="cf">in</span> <span class="dv">2</span><span class="sc">:</span>t_val) {</span>
+<span id="cb2-12"><a href="#cb2-12" tabindex="-1"></a>  x[t] <span class="ot">&lt;-</span> phi_true <span class="sc">*</span> x[t <span class="sc">-</span> <span class="dv">1</span>] <span class="sc">+</span> <span class="fu">sin</span>(x[t <span class="sc">-</span> <span class="dv">1</span>]) <span class="sc">+</span> sigma_x_true <span class="sc">*</span> <span class="fu">rnorm</span>(<span class="dv">1</span>)</span>
+<span id="cb2-13"><a href="#cb2-13" tabindex="-1"></a>  y[t] <span class="ot">&lt;-</span> x[t] <span class="sc">+</span> sigma_y_true <span class="sc">*</span> <span class="fu">rnorm</span>(<span class="dv">1</span>)</span>
+<span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a>}</span></code></pre></div>
+<p>Let’s visualize the data:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">x =</span> <span class="dv">1</span><span class="sc">:</span>t_val, <span class="at">y =</span> x), <span class="at">color =</span> <span class="st">&quot;blue&quot;</span>, <span class="at">linewidth =</span> <span class="dv">1</span>) <span class="sc">+</span> <span class="co"># Latent</span></span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="fu">aes</span>(<span class="at">x =</span> <span class="dv">1</span><span class="sc">:</span>t_val, <span class="at">y =</span> y), <span class="at">color =</span> <span class="st">&quot;red&quot;</span>, <span class="at">size =</span> <span class="dv">2</span>) <span class="sc">+</span> <span class="co"># Observed</span></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">&quot;Simulated Data: Latent State and Observations&quot;</span>,</span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">&quot;Time&quot;</span>,</span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>    <span class="at">y =</span> <span class="st">&quot;Value&quot;</span>,</span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>    <span class="at">caption =</span> <span class="st">&quot;Blue line: Latent state (x), Red points: Observed values (y)&quot;</span></span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a>  <span class="fu">theme_minimal</span>()</span></code></pre></div>
+<p><img role="img" aria-label="The blue line represents the latent state, and red points represent observed values." src="data:image/png;base64,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" alt="The blue line represents the latent state, and red points represent observed values." /></p>
+<p>To fit the model using <code>pmmh</code> we need to specify the
+likelihood initialization, transition, and log-likelihood functions.
+It’s important that they all take an argument <code>particles</code>,
+which is a vector of particles, and that the log-likelihood function
+takes an argument <span class="math inline">\(y\)</span> for the
+data.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>init_fn <span class="ot">&lt;-</span> <span class="cf">function</span>(particles) {</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>  <span class="fu">rnorm</span>(particles, <span class="at">mean =</span> <span class="dv">0</span>, <span class="at">sd =</span> <span class="dv">1</span>)</span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>}</span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a></span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>transition_fn <span class="ot">&lt;-</span> <span class="cf">function</span>(particles, phi, sigma_x) {</span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>  phi <span class="sc">*</span> particles <span class="sc">+</span> <span class="fu">sin</span>(particles) <span class="sc">+</span></span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>    <span class="fu">rnorm</span>(<span class="fu">length</span>(particles), <span class="at">mean =</span> <span class="dv">0</span>, <span class="at">sd =</span> sigma_x)</span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a>}</span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a></span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a>log_likelihood_fn <span class="ot">&lt;-</span> <span class="cf">function</span>(y, particles, sigma_y) {</span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a>  <span class="fu">dnorm</span>(y, <span class="at">mean =</span> particles, <span class="at">sd =</span> sigma_y, <span class="at">log =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a>}</span></code></pre></div>
+<p>Since we are interested in Bayesian inference, we need to specify the
+priors for our parameters. We will use a normal prior for <span class="math inline">\(\phi\)</span> and exponential priors for <span class="math inline">\(\sigma_x\)</span> and <span class="math inline">\(\sigma_y\)</span>. <code>pmmh</code> needs the
+priors to be specified on the <span class="math inline">\(\log\)</span>-scale and takes the priors as a list
+of functions.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>log_prior_phi <span class="ot">&lt;-</span> <span class="cf">function</span>(phi) {</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>  <span class="fu">dunif</span>(phi, <span class="at">min =</span> <span class="dv">0</span>, <span class="at">max =</span> <span class="dv">1</span>, <span class="at">log =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>}</span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>log_prior_sigma_x <span class="ot">&lt;-</span> <span class="cf">function</span>(sigma) {</span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>  <span class="fu">dexp</span>(sigma, <span class="at">rate =</span> <span class="dv">1</span>, <span class="at">log =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>}</span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a></span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>log_prior_sigma_y <span class="ot">&lt;-</span> <span class="cf">function</span>(sigma) {</span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>  <span class="fu">dexp</span>(sigma, <span class="at">rate =</span> <span class="dv">1</span>, <span class="at">log =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a>}</span>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a></span>
+<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a>log_priors <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a>  <span class="at">phi =</span> log_prior_phi,</span>
+<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a>  <span class="at">sigma_x =</span> log_prior_sigma_x,</span>
+<span id="cb5-16"><a href="#cb5-16" tabindex="-1"></a>  <span class="at">sigma_y =</span> log_prior_sigma_y</span>
+<span id="cb5-17"><a href="#cb5-17" tabindex="-1"></a>)</span></code></pre></div>
+<p>The <code>pmmh</code> function automatically tunes the number of
+particles and proposal distribution for the parameters. The tuning can
+be modified by the the function <code>default_tune_control</code>. We
+will use the default settings.</p>
+<p>We fit 2 chains with <span class="math inline">\(m=1000\)</span>
+iterations for each, with a burn_in of <span class="math inline">\(500\)</span>. We also modify the tuning to only
+use a pilot run of <span class="math inline">\(100\)</span> iterations
+and <span class="math inline">\(10\)</span> burn-in iterations. In
+practice you should run more iterations and chains. To improve sampling
+we specify that proposals for <span class="math inline">\(\sigma_x\)</span> and <span class="math inline">\(\sigma_y\)</span> should be on the <span class="math inline">\(\log\)</span>-scale.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>result <span class="ot">&lt;-</span> <span class="fu">pmmh</span>(</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>  <span class="at">y =</span> y,</span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>  <span class="at">m =</span> <span class="dv">1000</span>,</span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>  <span class="at">init_fn =</span> init_fn,</span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>  <span class="at">transition_fn =</span> transition_fn,</span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>  <span class="at">log_likelihood_fn =</span> log_likelihood_fn,</span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>  <span class="at">log_priors =</span> log_priors,</span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>  <span class="at">pilot_init_params =</span> <span class="fu">list</span>(</span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>    <span class="fu">c</span>(<span class="at">phi =</span> <span class="fl">0.4</span>, <span class="at">sigma_x =</span> <span class="fl">0.4</span>, <span class="at">sigma_y =</span> <span class="fl">0.4</span>),</span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a>    <span class="fu">c</span>(<span class="at">phi =</span> <span class="fl">0.8</span>, <span class="at">sigma_x =</span> <span class="fl">0.8</span>, <span class="at">sigma_y =</span> <span class="fl">0.8</span>)</span>
+<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a>  ),</span>
+<span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a>  <span class="at">burn_in =</span> <span class="dv">500</span>,</span>
+<span id="cb6-13"><a href="#cb6-13" tabindex="-1"></a>  <span class="at">num_chains =</span> <span class="dv">2</span>,</span>
+<span id="cb6-14"><a href="#cb6-14" tabindex="-1"></a>  <span class="at">seed =</span> <span class="dv">1405</span>,</span>
+<span id="cb6-15"><a href="#cb6-15" tabindex="-1"></a>  <span class="at">param_transform =</span> <span class="fu">list</span>(</span>
+<span id="cb6-16"><a href="#cb6-16" tabindex="-1"></a>    <span class="at">phi =</span> <span class="st">&quot;identity&quot;</span>,</span>
+<span id="cb6-17"><a href="#cb6-17" tabindex="-1"></a>    <span class="at">sigma_x =</span> <span class="st">&quot;log&quot;</span>,</span>
+<span id="cb6-18"><a href="#cb6-18" tabindex="-1"></a>    <span class="at">sigma_y =</span> <span class="st">&quot;log&quot;</span></span>
+<span id="cb6-19"><a href="#cb6-19" tabindex="-1"></a>  ),</span>
+<span id="cb6-20"><a href="#cb6-20" tabindex="-1"></a>  <span class="at">tune_control =</span> <span class="fu">default_tune_control</span>(<span class="at">pilot_m =</span> <span class="dv">100</span>, <span class="at">pilot_burn_in =</span> <span class="dv">10</span>),</span>
+<span id="cb6-21"><a href="#cb6-21" tabindex="-1"></a>  <span class="at">verbose =</span> <span class="cn">TRUE</span></span>
+<span id="cb6-22"><a href="#cb6-22" tabindex="-1"></a>)</span>
+<span id="cb6-23"><a href="#cb6-23" tabindex="-1"></a><span class="co">#&gt; Running chain 1...</span></span>
+<span id="cb6-24"><a href="#cb6-24" tabindex="-1"></a><span class="co">#&gt; Running pilot chain for tuning...</span></span>
+<span id="cb6-25"><a href="#cb6-25" tabindex="-1"></a><span class="co">#&gt; Pilot chain posterior mean:</span></span>
+<span id="cb6-26"><a href="#cb6-26" tabindex="-1"></a><span class="co">#&gt;       phi   sigma_x   sigma_y </span></span>
+<span id="cb6-27"><a href="#cb6-27" tabindex="-1"></a><span class="co">#&gt; 0.7627961 0.8666411 0.3453238</span></span>
+<span id="cb6-28"><a href="#cb6-28" tabindex="-1"></a><span class="co">#&gt; Pilot chain posterior covariance (on transformed space):</span></span>
+<span id="cb6-29"><a href="#cb6-29" tabindex="-1"></a><span class="co">#&gt;                   phi       sigma_x       sigma_y</span></span>
+<span id="cb6-30"><a href="#cb6-30" tabindex="-1"></a><span class="co">#&gt; phi      0.0027745174 -0.0015756575 -0.0003044175</span></span>
+<span id="cb6-31"><a href="#cb6-31" tabindex="-1"></a><span class="co">#&gt; sigma_x -0.0015756575  0.0008948210  0.0001728797</span></span>
+<span id="cb6-32"><a href="#cb6-32" tabindex="-1"></a><span class="co">#&gt; sigma_y -0.0003044175  0.0001728797  0.0000334004</span></span>
+<span id="cb6-33"><a href="#cb6-33" tabindex="-1"></a><span class="co">#&gt; Using 276 particles for PMMH:</span></span>
+<span id="cb6-34"><a href="#cb6-34" tabindex="-1"></a><span class="co">#&gt; Running particle MCMC chain with tuned settings...</span></span>
+<span id="cb6-35"><a href="#cb6-35" tabindex="-1"></a><span class="co">#&gt; Running chain 2...</span></span>
+<span id="cb6-36"><a href="#cb6-36" tabindex="-1"></a><span class="co">#&gt; Running pilot chain for tuning...</span></span>
+<span id="cb6-37"><a href="#cb6-37" tabindex="-1"></a><span class="co">#&gt; Pilot chain posterior mean:</span></span>
+<span id="cb6-38"><a href="#cb6-38" tabindex="-1"></a><span class="co">#&gt;       phi   sigma_x   sigma_y </span></span>
+<span id="cb6-39"><a href="#cb6-39" tabindex="-1"></a><span class="co">#&gt; 0.8410910 0.9787454 0.2937277</span></span>
+<span id="cb6-40"><a href="#cb6-40" tabindex="-1"></a><span class="co">#&gt; Pilot chain posterior covariance (on transformed space):</span></span>
+<span id="cb6-41"><a href="#cb6-41" tabindex="-1"></a><span class="co">#&gt;                   phi       sigma_x       sigma_y</span></span>
+<span id="cb6-42"><a href="#cb6-42" tabindex="-1"></a><span class="co">#&gt; phi      5.354948e-05 -5.899062e-05 -0.0003836286</span></span>
+<span id="cb6-43"><a href="#cb6-43" tabindex="-1"></a><span class="co">#&gt; sigma_x -5.899062e-05  6.498464e-05  0.0004226089</span></span>
+<span id="cb6-44"><a href="#cb6-44" tabindex="-1"></a><span class="co">#&gt; sigma_y -3.836286e-04  4.226089e-04  0.0027483157</span></span>
+<span id="cb6-45"><a href="#cb6-45" tabindex="-1"></a><span class="co">#&gt; Using 353 particles for PMMH:</span></span>
+<span id="cb6-46"><a href="#cb6-46" tabindex="-1"></a><span class="co">#&gt; Running particle MCMC chain with tuned settings...</span></span>
+<span id="cb6-47"><a href="#cb6-47" tabindex="-1"></a><span class="co">#&gt; PMMH Results Summary:</span></span>
+<span id="cb6-48"><a href="#cb6-48" tabindex="-1"></a><span class="co">#&gt;  Parameter Mean   SD Median CI Lower.2.5% CI Upper.97.5% ESS  Rhat</span></span>
+<span id="cb6-49"><a href="#cb6-49" tabindex="-1"></a><span class="co">#&gt;        phi 0.83 0.03   0.83          0.76           0.89  77 1.020</span></span>
+<span id="cb6-50"><a href="#cb6-50" tabindex="-1"></a><span class="co">#&gt;    sigma_x 0.91 0.08   0.91          0.80           1.01   1 4.550</span></span>
+<span id="cb6-51"><a href="#cb6-51" tabindex="-1"></a><span class="co">#&gt;    sigma_y 0.35 0.09   0.34          0.19           0.59  57 1.048</span></span>
+<span id="cb6-52"><a href="#cb6-52" tabindex="-1"></a><span class="co">#&gt; Warning in pmmh(y = y, m = 1000, init_fn = init_fn, transition_fn =</span></span>
+<span id="cb6-53"><a href="#cb6-53" tabindex="-1"></a><span class="co">#&gt; transition_fn, : Some ESS values are below 400, indicating poor mixing.</span></span>
+<span id="cb6-54"><a href="#cb6-54" tabindex="-1"></a><span class="co">#&gt; Consider running the chains for more iterations.</span></span>
+<span id="cb6-55"><a href="#cb6-55" tabindex="-1"></a><span class="co">#&gt; Warning in pmmh(y = y, m = 1000, init_fn = init_fn, transition_fn = transition_fn, : </span></span>
+<span id="cb6-56"><a href="#cb6-56" tabindex="-1"></a><span class="co">#&gt; Some Rhat values are above 1.01, indicating that the chains have not converged. </span></span>
+<span id="cb6-57"><a href="#cb6-57" tabindex="-1"></a><span class="co">#&gt; Consider running the chains for more iterations and/or increase burn_in.</span></span></code></pre></div>
+<p>We see that the chains gives convergence issues, indicating that we
+should run it for more iterations, but we ignore this issue in this
+Vignette.</p>
+<p>It automatically prints data frame summarizing the results, which can
+be printed from any <code>pmmh_output</code> object by calling
+<code>print</code>.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="fu">print</span>(result)</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="co">#&gt; PMMH Results Summary:</span></span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a><span class="co">#&gt;  Parameter Mean   SD Median CI Lower.2.5% CI Upper.97.5% ESS  Rhat</span></span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="co">#&gt;        phi 0.83 0.03   0.83          0.76           0.89  77 1.020</span></span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="co">#&gt;    sigma_x 0.91 0.08   0.91          0.80           1.01   1 4.550</span></span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a><span class="co">#&gt;    sigma_y 0.35 0.09   0.34          0.19           0.59  57 1.048</span></span></code></pre></div>
+<p>The chains are saved as <code>theta_chain</code></p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>chains <span class="ot">&lt;-</span> result<span class="sc">$</span>theta_chain</span></code></pre></div>
+<p>Let’s collect the chains for phi from the chains and visualize the
+densities</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="fu">ggplot</span>(chains, <span class="fu">aes</span>(<span class="at">x =</span> phi, <span class="at">fill =</span> <span class="fu">factor</span>(chain))) <span class="sc">+</span></span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>  <span class="fu">geom_density</span>(<span class="at">alpha =</span> <span class="fl">0.5</span>) <span class="sc">+</span></span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">&quot;Density plot of phi chains&quot;</span>,</span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">&quot;Value&quot;</span>,</span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a>    <span class="at">y =</span> <span class="st">&quot;Density&quot;</span>,</span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a>    <span class="at">fill =</span> <span class="st">&quot;Chain&quot;</span></span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a>  <span class="fu">theme_minimal</span>()</span></code></pre></div>
+<p><img role="img" aria-label="Density plot of phi chains." src="data:image/png;base64,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" alt="Density plot of phi chains." /></p>
+<p>We have now fitted a simple SSM model using <code>bayesSSM</code>.
+Feel free to explore the package further and try out different
+models.</p>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

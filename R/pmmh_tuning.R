@@ -213,10 +213,10 @@
     param_transform <- unlist(param_transform[names(log_priors)])
 
     # Validate transformations and replace any invalid entries.
-    invalid <- !(param_transform %in% c("log", "invlogit", "identity"))
+    invalid <- !(param_transform %in% c("log", "logit", "identity"))
     if (any(invalid)) {
       warning(paste0(
-        "Only 'log', 'invlogit', and 'identity' transformations are supported.",
+        "Only 'log', 'logit', and 'identity' transformations are supported.",
         " Using 'identity' for invalid entries."
       ))
       param_transform[invalid] <- "identity"
@@ -238,9 +238,11 @@
         theta = current_theta,
         transform = param_transform
       )
+
       # Propose in the transformed space.
       proposed_theta_trans <- current_theta_trans +
         rnorm(length(current_theta_trans), mean = 0, sd = proposal_sd)
+
       # Back-transform to original scale.
       proposed_theta <- .back_transform_params(
         theta_trans = proposed_theta_trans,
@@ -296,6 +298,11 @@
     log_accept_denom <- sum(log_prior_current) + current_loglike +
       log_jacobian_current
     log_accept_ratio <- log_accept_num - log_accept_denom
+
+    # If it’s NA/NaN, force it to -Inf.
+    if (is.na(log_accept_ratio)) {
+      log_accept_ratio <- -Inf
+    }
 
     if (log(runif(1)) < log_accept_ratio) {
       current_theta <- proposed_theta

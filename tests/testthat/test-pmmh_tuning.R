@@ -1,7 +1,7 @@
 test_that(".pilot_run works non-trivial setup", {
   set.seed(1405)
-  init_fn <- function(particles, ...) {
-    rnorm(particles, mean = 0, sd = 1)
+  init_fn <- function(num_particles, ...) {
+    rnorm(num_particles, mean = 0, sd = 1)
   }
 
   transition_fn <- function(particles, t, phi, sigma_x, ...) {
@@ -45,8 +45,8 @@ test_that(".pilot_run works non-trivial setup", {
 # .run_pilot_chain works
 test_that(".run_pilot_chain works", {
   set.seed(1405)
-  init_fn <- function(particles, ...) {
-    rnorm(particles, mean = 0, sd = 1)
+  init_fn <- function(num_particles, ...) {
+    rnorm(num_particles, mean = 0, sd = 1)
   }
 
   transition_fn <- function(particles, t, phi, ...) {
@@ -167,7 +167,7 @@ test_that(".run_pilot_chain works", {
     param_transform = list(
       phi = "arctan"
     )
-  ), "Only 'log', 'invlogit', and 'identity' transformations are supported.")
+  ), "Only 'log', 'logit', and 'identity' transformations are supported.")
 
   # Check verbose works
   expect_message(
@@ -221,8 +221,8 @@ test_that(".run_pilot_chain works", {
 test_that("More complicated example", {
   set.seed(1405)
 
-  init_fn <- function(particles, ...) {
-    rnorm(particles, mean = 0, sd = 1)
+  init_fn <- function(num_particles, ...) {
+    rnorm(num_particles, mean = 0, sd = 1)
   }
 
   transition_fn <- function(particles, phi, sigma_x, ...) {
@@ -292,8 +292,8 @@ test_that("More complicated example", {
 test_that("More complicated example with transformation", {
   set.seed(1405)
 
-  init_fn <- function(particles, ...) {
-    rnorm(particles, mean = 0, sd = 1)
+  init_fn <- function(num_particles, ...) {
+    rnorm(num_particles, mean = 0, sd = 1)
   }
 
   transition_fn <- function(particles, phi, sigma_x, ...) {
@@ -369,17 +369,34 @@ test_that("More complicated example with transformation", {
 test_that("Multi dimensional works", {
   set.seed(1405)
 
-  init_fn <- function(particles, ...) matrix(rnorm(particles * 2), ncol = 2)
-  transition_fn <- function(particles, phi, ...) {
-    particles + rnorm(nrow(particles) * 2, mean = phi)
+  init_fn <- function(num_particles, ...) {
+    matrix(rnorm(num_particles * 2), ncol = 2)
   }
-  log_likelihood_fn <- function(y, particles, ...) rep(1, nrow(particles))
+  transition_fn <- function(particles, phi, ...) {
+    particles + rnorm(ncol(particles), mean = phi)
+  }
+  log_likelihood_fn <- function(y, particles, ...) {
+    dnorm(y[1], mean = particles[, 1], sd = 1, log = TRUE) +
+      dnorm(y[2], mean = particles[, 2], sd = 1, log = TRUE)
+  }
 
-  # A vector of observation
-  y <- rep(0, 5)
+
+  init_state <-  matrix(rnorm(2), ncol = 2)
+  num_steps <- 50
+  x <- matrix(0, nrow = num_steps, ncol = 2)
+  y <- matrix(0, nrow = num_steps, ncol = 2)
+  phi <- 1
+  x[1, ] <- init_state + rnorm(2, mean = phi)
+  y[1, ] <- rnorm(2, mean = x[1, ], sd = 1)
+
+  for (t in 2:num_steps) {
+    x[t, ] <- x[t - 1, ] + rnorm(2, mean = phi)
+    y[t, ] <- rnorm(2, mean = x[t, ], sd = 1)
+  }
+  x <- rbind(init_state, x)
 
   log_prior_phi <- function(phi) {
-    stats::dnorm(phi, mean = 0, sd = 1, log = TRUE)
+    dnorm(phi, mean = 0, sd = 1, log = TRUE)
   }
 
   log_priors <- list(
@@ -402,5 +419,5 @@ test_that("Multi dimensional works", {
   )
   phi_est <- unname(result$pilot_theta_mean)
 
-  expect_equal(phi_est, 0, tolerance = 0.1)
+  expect_equal(phi_est, phi, tolerance = 0.1)
 })

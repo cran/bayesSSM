@@ -12,23 +12,26 @@ library(ggplot2)
 
 ## -----------------------------------------------------------------------------
 set.seed(1405)
-t_val <- 50
-phi_true <- 0.8
-sigma_x_true <- 1
-sigma_y_true <- 0.5
+t_val <- 20
+phi <- 0.8
+sigma_x <- 1
+sigma_y <- 0.5
 
+init_state <- rnorm(1, mean = 0, sd = 1)
 x <- numeric(t_val)
 y <- numeric(t_val)
-x[1] <- rnorm(1)
-y[1] <- x[1] + sigma_y_true * rnorm(1)
+x[1] <- phi * init_state + sin(init_state) +
+  rnorm(1, mean = 0, sd = sigma_x)
+y[1] <- x[1] + rnorm(1, mean = 0, sd = sigma_y)
 for (t in 2:t_val) {
-  x[t] <- phi_true * x[t - 1] + sin(x[t - 1]) + sigma_x_true * rnorm(1)
-  y[t] <- x[t] + sigma_y_true * rnorm(1)
+  x[t] <- phi * x[t - 1] + sin(x[t - 1]) + rnorm(1, mean = 0, sd = sigma_x)
+  y[t] <- x[t] + rnorm(1, mean = 0, sd = sigma_y)
 }
+x <- c(init_state, x)
 
 ## -----------------------------------------------------------------------------
 ggplot() +
-  geom_line(aes(x = 1:t_val, y = x), color = "blue", linewidth = 1) + # Latent
+  geom_line(aes(x = 0:t_val, y = x), color = "blue", linewidth = 1) + # Latent
   geom_point(aes(x = 1:t_val, y = y), color = "red", size = 2) + # Observed
   labs(
     title = "Simulated Data: Latent State and Observations",
@@ -39,8 +42,8 @@ ggplot() +
   theme_minimal()
 
 ## -----------------------------------------------------------------------------
-init_fn <- function(particles) {
-  rnorm(particles, mean = 0, sd = 1)
+init_fn <- function(num_particles) {
+  rnorm(num_particles, mean = 0, sd = 1)
 }
 
 transition_fn <- function(particles, phi, sigma_x) {
@@ -87,7 +90,7 @@ result <- pmmh(
   num_chains = 2,
   seed = 1405,
   param_transform = list(
-    phi = "identity",
+    phi = "logit",
     sigma_x = "log",
     sigma_y = "log"
   ),

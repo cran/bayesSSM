@@ -53,3 +53,23 @@ test_that("ess stops for zero variance chains", {
   chains <- matrix(rep(1, 9), nrow = 3, ncol = 3)
   expect_warning(ess(chains), "One or more chains have zero variance")
 })
+
+test_that("ess stops dataframe no 'chain' column ", {
+  chains_df <- data.frame(a = c(1, 2, 3), b = c(4, 5, 6))
+  expect_error(
+    ess(chains_df),
+    "Data frame must contain a 'chain' column."
+  )
+})
+
+test_that("ess stops if every chain not same number of iterations", {
+  chains_df <- data.frame(
+    chain = c(1, 1, 1, 1, 1, 2, 2, 2),
+    param1 = rnorm(8),
+    param2 = rnorm(8)
+  )
+  expect_error(
+    ess(chains_df),
+    "Not all chains have the same number of iterations."
+  )
+})

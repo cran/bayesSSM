@@ -20,22 +20,28 @@ particle_filter(
 }
 \arguments{
 \item{y}{A numeric vector or matrix of observations. Each row represents an
-observation at a time step.}
+observation at a time step. If observations not equally spaced, use the
+\code{obs_times} argument to specify the time points at which
+observations are available.}
 
 \item{num_particles}{A positive integer specifying the number of particles.}
 
 \item{init_fn}{A function that initializes the particle states. It should
-take the current particles as its first argument and return
-a vector or matrix of initial particle states.}
+take `num_particles` as an argument for initializing the particles and return
+a vector or matrix of initial particle states. It can include any
+model-specific parameters as named arguments.}
 
 \item{transition_fn}{A function describing the state transition model. It
-should take the current particles and the current time step as arguments and
-return the propagated particles.}
+should take `particles` as an argument and return the propagated particles.
+The function can optionally depend on time by including a time step argument
+`t`. It can include any model-specific parameters as named arguments.}
 
-\item{log_likelihood_fn}{A function that computes the log likelihoods for the
-particles. It should accept an observation, the current particles, and the
-current time step as arguments and return a numeric vector of log likelihood
-values.}
+\item{log_likelihood_fn}{A function that computes the log-likelihoods for the
+particles. It should take a `y` argument for the observations,
+the current particles, and return a numeric vector of log-likelihood
+values. The function can optionally depend on time by including a time step
+argument `t`. It can include any model-specific parameters as named
+arguments.}
 
 \item{obs_times}{A numeric vector indicating the time points at which
 observations in \code{y} are available. Must be of the same length as the
@@ -52,13 +58,14 @@ Must be one of \code{"stratified"}, \code{"systematic"}, or
 
 \item{threshold}{A numeric value specifying the ESS threshold for triggering
 resampling in the \code{"SISAR"} algorithm. If not provided, it defaults to
-\code{particles / 2}.}
+\code{num_particles / 2}.}
 
 \item{return_particles}{A logical value indicating whether to return the full
 particle history. Defaults to \code{TRUE}.}
 
 \item{...}{Additional arguments passed to \code{init_fn},
-\code{transition_fn}, and \code{log_likelihood_fn}.}
+\code{transition_fn}, and \code{log_likelihood_fn}. I.e., parameter values if
+the functions requires them.}
 }
 \value{
 A list containing:
@@ -73,12 +80,12 @@ A list containing:
     time step.}
     \item{algorithm}{A character string indicating the filtering algorithm
     used.}
-    \item{particles_history}{(Optional) A list of particle state matrices
-    over time (one per time step), returned if \code{return_particles} is
-    \code{TRUE}.}
-    \item{weights_history}{(Optional) A list of particle weight vectors over
-    time (one per time step), returned if \code{return_particles} is
-    \code{TRUE}.}
+    \item{particles_history}{(Optional) A matrix of particle states over
+    time, with dimension \code{(num_obs + 1) x num_particles}. Returned if
+    \code{return_particles} is \code{TRUE}.}
+    \item{weights_history}{(Optional) A matrix of particle weights over time,
+    with dimension \code{(num_obs + 1) x num_particles}. Returned if
+    \code{return_particles} is \code{TRUE}.}
   }
 }
 \description{
@@ -118,14 +125,13 @@ showed that it always gives a lower variance compared to
 multinomial resampling.
 }
 \examples{
-init_fn <- function(particles) rnorm(particles, 0, 1)
+init_fn <- function(num_particles) rnorm(num_particles, 0, 1)
 transition_fn <- function(particles) particles + rnorm(length(particles))
 log_likelihood_fn <- function(y, particles) {
   dnorm(y, mean = particles, sd = 1, log = TRUE)
 }
 
-# Generate data
-y <- cumsum(rnorm(50))
+y <- cumsum(rnorm(50)) # dummy data
 num_particles <- 100
 
 # Run the particle filter using default settings.
@@ -136,10 +142,12 @@ result <- particle_filter(
   transition_fn = transition_fn,
   log_likelihood_fn = log_likelihood_fn
 )
-plot(result$state_est, type = "l", col = "blue", main = "State Estimates")
+plot(result$state_est, type = "l", col = "blue", main = "State Estimates",
+  ylim = range(c(result$state_est, y)))
+points(y, col = "red", pch = 20)
 
 # With parameters
-init_fn <- function(particles) rnorm(particles, 0, 1)
+init_fn <- function(num_particles) rnorm(num_particles, 0, 1)
 transition_fn <- function(particles, mu) {
   particles + rnorm(length(particles), mean = mu)
 }
@@ -147,8 +155,7 @@ log_likelihood_fn <- function(y, particles, sigma) {
   dnorm(y, mean = particles, sd = sigma, log = TRUE)
 }
 
-# Generate data
-y <- cumsum(rnorm(50))
+y <- cumsum(rnorm(50)) # dummy data
 num_particles <- 100
 
 # Run the particle filter using default settings.
@@ -161,10 +168,12 @@ result <- particle_filter(
   mu = 1,
   sigma = 1
 )
-plot(result$state_est, type = "l", col = "blue", main = "State Estimates")
+plot(result$state_est, type = "l", col = "blue", main = "State Estimates",
+  ylim = range(c(result$state_est, y)))
+points(y, col = "red", pch = 20)
 
 # With observations gaps
-init_fn <- function(particles) rnorm(particles, 0, 1)
+init_fn <- function(num_particles) rnorm(num_particles, 0, 1)
 transition_fn <- function(particles, mu) {
   particles + rnorm(length(particles), mean = mu)
 }
@@ -189,13 +198,13 @@ data <- simulate_ssm(10, mu = 1, sigma = 1)
 # Suppose we have data for t=1,2,3,5,6,7,8,9,10 (i.e., missing at t=4)
 
 obs_times <- c(1, 2, 3, 5, 6, 7, 8, 9, 10)
-data <- data[obs_times]
+data_obs <- data[obs_times]
 
 num_particles <- 100
 # Run the particle filter
 # Specify observation times in the particle filter using obs_times
 result <- particle_filter(
-  y = data,
+  y = data_obs,
   num_particles = num_particles,
   init_fn = init_fn,
   transition_fn = transition_fn,
@@ -204,7 +213,9 @@ result <- particle_filter(
   mu = 1,
   sigma = 1,
 )
-plot(result$state_est, type = "l", col = "blue", main = "State Estimates")
+plot(result$state_est, type = "l", col = "blue", main = "State Estimates",
+  ylim = range(c(result$state_est, data)))
+points(data_obs, col = "red", pch = 20)
 }
 \references{
 Douc, R., Cappé, O., & Moulines, E. (2005). Comparison of

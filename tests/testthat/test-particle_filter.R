@@ -1,16 +1,16 @@
 test_that("particle_filter returns errors on wrong input", {
-  init_fn <- function(particles) rep(0, particles)
+  init_fn <- function(num_particles) rep(0, num_particles)
   transition_fn <- function(particles) particles + 1
   log_likelihood_fn <- function(y, particles) rep(1, length(particles))
 
-  wrong_init_fn <- function(particles) rep(0, particles + 1)
+  wrong_init_fn <- function(num_particles) rep(0, num_particles + 1)
   wrong_transition_fn <- function(particles) c(particles, 1)
   wrong_log_likelihood_fn <- function(y, particles) {
     rep(1, length(particles) + 1)
   }
 
-  wrong_init_fn_matrix <- function(particles) {
-    matrix(rep(0, particles * 2), ncol = 5)
+  wrong_init_fn_matrix <- function(num_particles) {
+    matrix(rep(0, num_particles * 2), ncol = 5)
   }
   # A simple observation vector for testing (5 time steps)
   y <- rep(0, 5)
@@ -29,7 +29,7 @@ test_that("particle_filter returns errors on wrong input", {
       num_particles = 10, wrong_init_fn, transition_fn,
       log_likelihood_fn, algorithm = "SIS"
     ),
-    "init_fn must return a vector of length num_particles"
+    "init_fn must return a length of num_particles"
   )
 
   expect_error(
@@ -37,7 +37,7 @@ test_that("particle_filter returns errors on wrong input", {
       y, num_particles = 10, wrong_init_fn_matrix, transition_fn,
       log_likelihood_fn, algorithm = "SIS"
     ),
-    "init_fn must return a matrix with num_particles rows"
+    "init_fn must return num_particles rows"
   )
 
   expect_error(
@@ -45,7 +45,7 @@ test_that("particle_filter returns errors on wrong input", {
       y, num_particles = 10, init_fn, wrong_transition_fn,
       log_likelihood_fn, algorithm = "SIS"
     ),
-    "transition_fn must return a vector of length num_particles"
+    "transition_fn must return a length of num_particles"
   )
 
   expect_error(
@@ -53,7 +53,7 @@ test_that("particle_filter returns errors on wrong input", {
       y, num_particles = 10, init_fn, transition_fn,
       wrong_log_likelihood_fn, algorithm = "SIS"
     ),
-    "log_likelihood_fn must return dimensions matching num_particles"
+    "log_likelihood_fn must return num_particles values"
   )
 
   expect_error(
@@ -71,7 +71,7 @@ test_that("particle_filter returns errors on wrong input", {
       y, num_particles = 10, init_fn, transition_fn, log_likelihood_fn,
       obs_times = wrong_len_obs_times
     ),
-    "obs_times must match the number of observations "
+    "obs_times must match rows of y"
   )
 
   not_numeric_obs_times <- "hi"
@@ -105,7 +105,7 @@ test_that("particle_filter returns errors on wrong input", {
 
 
 test_that("particle_filter returns correct structure", {
-  init_fn <- function(particles) rep(0, particles)
+  init_fn <- function(num_particles) rep(0, num_particles)
   transition_fn <- function(particles) particles + 1
   log_likelihood_fn <- function(y, particles) rep(1, length(particles))
 
@@ -124,7 +124,7 @@ test_that("particle_filter returns correct structure", {
 })
 
 test_that("particle_filter returns no particles_history when requested", {
-  init_fn <- function(particles) rep(0, particles)
+  init_fn <- function(num_particles) rep(0, num_particles)
   transition_fn <- function(particles) particles + 1
   log_likelihood_fn <- function(y, particles) rep(1, length(particles))
 
@@ -139,9 +139,10 @@ test_that("particle_filter returns no particles_history when requested", {
 })
 
 test_that("particle_filter works non-trivial setup", {
+  set.seed(1405)
   # Works with more complicated setup
-  init_fn_ssm <- function(particles) {
-    rnorm(particles, mean = 0, sd = 1)
+  init_fn_ssm <- function(num_particles) {
+    rnorm(num_particles, mean = 0, sd = 1)
   }
 
   transition_fn_ssm <- function(particles, phi, sigma_x) {
@@ -155,14 +156,17 @@ test_that("particle_filter works non-trivial setup", {
   }
 
   simulate_ssm <- function(num_steps, phi, sigma_x, sigma_y) {
+    init_state <- rnorm(1, mean = 0, sd = sigma_x)
     x <- numeric(num_steps)
     y <- numeric(num_steps)
-    x[1] <- rnorm(1, mean = 0, sd = sigma_x)
-    y[1] <- rnorm(1, mean = x[1], sd = sigma_y)
+    x[1] <- phi * init_state + sin(init_state) +
+      rnorm(1, mean = 0, sd = sigma_x)
+    y[1] <- x[1] + rnorm(1, mean = 0, sd = sigma_y)
     for (t in 2:num_steps) {
       x[t] <- phi * x[t - 1] + sin(x[t - 1]) + rnorm(1, mean = 0, sd = sigma_x)
       y[t] <- x[t] + rnorm(1, mean = 0, sd = sigma_y)
     }
+    x <- c(init_state, x)
     list(x = x, y = y)
   }
   my_data <- simulate_ssm(50, phi = 0.8, sigma_x = 1, sigma_y = 0.5)
@@ -179,14 +183,25 @@ test_that("particle_filter works non-trivial setup", {
     algorithm = "SISAR",
     resample_fn = "systematic"
   )
+  # Expect length of result$state_est to be equal to length of x
+  expect_equal(length(result$state_est), length(my_data$x))
   rmse <- sqrt(mean((result$state_est - my_data$x)^2))
-  expect_lt(rmse, 1)
+  plot(
+    result$state_est,
+    type = "l",
+    col = "blue",
+    main = "Particle Filter State Estimate vs True State",
+    xlab = "Time",
+    ylab = "State Estimate"
+  )
+  lines(my_data$x, col = "red")
+  expect_lt(rmse, 0.5)
 })
 
 
 # Check works with matrix
 test_that("Multi-dim particle filter works", {
-  init_fn <- function(particles) matrix(rnorm(particles * 2), ncol = 2)
+  init_fn <- function(num_particles) matrix(rnorm(num_particles * 2), ncol = 2)
   transition_fn <- function(particles) {
     particles + rnorm(nrow(particles) * 2)
   }
@@ -204,4 +219,23 @@ test_that("Multi-dim particle filter works", {
   expect_true("ess" %in% names(result))
   expect_true("algorithm" %in% names(result))
   expect_true("particles_history" %in% names(result))
+})
+
+# Check deprecate warning
+test_that("Deprecation warning for particles argument in init_fn", {
+  init_fn <- function(particles) rep(0, particles)
+  transition_fn <- function(particles) particles + 1
+  log_likelihood_fn <- function(y, particles) rep(1, length(particles))
+
+  # A simple observation vector for testing (5 time steps)
+  y <- rep(0, 5)
+  rlang::local_options(lifecycle_verbosity = "error")
+
+  expect_error(
+    particle_filter(y,
+      num_particles = 10, init_fn, transition_fn,
+      log_likelihood_fn
+    ),
+    class = "defunctError"
+  )
 })

@@ -8,6 +8,16 @@
 
 # Multinomial resampling: samples indices with replacement based on weights.
 .resample_multinomial <- function(particles, weights) {
+  # Check all are non-negative
+  if (any(weights < 0)) {
+    stop("Weights must be non-negative")
+  }
+
+  total_weight <- sum(weights)
+  if (total_weight == 0) {
+    stop("Sum of weights must be greater than 0")
+  }
+
   if (is.matrix(particles)) {
     n <- nrow(particles)
     # Throw error if particles dim doesn't match weights length
@@ -30,13 +40,23 @@
 # Stratified resampling: divides [0,1] into N strata and samples one point per
 # stratum.
 .resample_stratified <- function(particles, weights) {
+  # Check all are non-negative
+  if (any(weights < 0)) {
+    stop("Weights must be non-negative")
+  }
+
+  total_weight <- sum(weights)
+  if (total_weight == 0) {
+    stop("Sum of weights must be greater than 0")
+  }
+
   if (is.matrix(particles)) {
     n <- nrow(particles)
     # Throw error if particles dim doesn't match weights length
     if (n != length(weights)) {
       stop("Number of particles must match the length of weights")
     }
-    positions <- (runif(1) + seq_len(n) - 1) / n
+    positions <- (runif(n) + seq_len(n) - 1) / n
     cumulative_sum <- cumsum(weights)
     indices <- numeric(n)
     i <- 1
@@ -56,7 +76,7 @@
     if (n != length(weights)) {
       stop("Number of particles must match the length of weights")
     }
-    positions <- (runif(1) + seq_len(n) - 1) / n
+    positions <- (runif(n) + seq_len(n) - 1) / n
     cumulative_sum <- cumsum(weights)
     indices <- numeric(n)
     i <- 1
@@ -76,17 +96,25 @@
 # Systematic resampling: similar to stratified sampling but with a single
 # random start
 .resample_systematic <- function(particles, weights) {
+  # Check all are non-negative
+  if (any(weights < 0)) {
+    stop("Weights must be non-negative")
+  }
+
+  total_weight <- sum(weights)
+  if (total_weight == 0) {
+    stop("Sum of weights must be greater than 0")
+  }
+
   if (is.matrix(particles)) {
     n <- nrow(particles)
     # Throw error if particles dim doesn't match weights length
     if (n != length(weights)) {
       stop("Number of particles must match the length of weights")
     }
-
-    start <- stats::runif(1, 0, 1 / n)
-    positions <- start + ((0:(n - 1)) / n)
+    positions <- (runif(1) + seq_len(n) - 1) / n
     cumulative_sum <- cumsum(weights)
-    indices <- rep(NA, n)
+    indices <- numeric(n)
     i <- 1
     j <- 1
     while (i <= n) {
@@ -104,11 +132,9 @@
     if (n != length(weights)) {
       stop("Number of particles must match the length of weights")
     }
-
-    start <- runif(1, 0, 1 / n)
-    positions <- start + ((0:(n - 1)) / n)
+    positions <- (runif(1) + seq_len(n) - 1) / n
     cumulative_sum <- cumsum(weights)
-    indices <- rep(NA, n)
+    indices <- numeric(n)
     i <- 1
     j <- 1
     while (i <= n) {

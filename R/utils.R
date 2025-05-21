@@ -15,15 +15,26 @@
 .check_params_match <- function(
     init_fn, transition_fn, log_likelihood_fn, pilot_init_params,
     log_priors) {
-  # Helper function to get parameter names excluding 'particles' and 'y'
   get_fn_params <- function(fn) {
-    fn_args <- names(formals(fn))
-
-    fn_args
+    names(formals(fn))
+  }
+  # Check if 'particles' or 'num_particles' is in init_fn. 'particles' will
+  # be deprecated in the future.
+  check_init_fn <- function(fn, fn_name) {
+    fn_args <- get_fn_params(fn)
+    if (!("particles" %in% fn_args || "num_particles" %in% fn_args)) {
+      stop(
+        paste(
+          fn_name,
+          "does not contain 'particles' or 'num_particles' as an argument"
+        )
+      )
+    }
   }
 
-  # Check if 'particles' is in init_fn, transition_fn, and
-  # log_likelihood_fn
+  check_init_fn(init_fn, "init_fn")
+
+  # Check if 'particles' is in function
   check_particles <- function(fn, fn_name) {
     fn_args <- get_fn_params(fn)
     if (!"particles" %in% fn_args) {
@@ -31,25 +42,24 @@
     }
   }
 
+  check_particles(transition_fn, "transition_fn")
+  check_particles(log_likelihood_fn, "log_likelihood_fn")
+
   # Check if 'y' is in log_likelihood_fn
   if (!"y" %in% get_fn_params(log_likelihood_fn)) {
     stop("log_likelihood_fn does not contain 'y' as an argument")
   }
 
-  # Check if 'particles' is in all functions
-  check_particles(init_fn, "init_fn")
-  check_particles(transition_fn, "transition_fn")
-  check_particles(log_likelihood_fn, "log_likelihood_fn")
 
   # Combine parameters from all three functions
-  # (ignoring 'particles', 'y' and '...' in the check)
   fn_params <- unique(c(
     get_fn_params(init_fn),
     get_fn_params(transition_fn),
     get_fn_params(log_likelihood_fn)
   ))
-  # Drop 'particles', 'y' and '...'
-  fn_params <- fn_params[!(fn_params %in% c("particles", "y", "..."))]
+  # Drop 'num_particles', 'particles', 'y', 't', and '...' from the parameters
+  drop_names <- c("num_particles", "particles", "y", "t", "...")
+  fn_params <- fn_params[!(fn_params %in% drop_names)]
 
   # Check if the parameters match init_params
   if (!all(fn_params %in% names(pilot_init_params))) {
@@ -77,11 +87,11 @@
 .transform_params <- function(theta, transform) {
   sapply(seq_along(theta), function(j) {
     if (transform[j] == "log") {
-      log(theta[j])
-    } else if (transform[j] == "invlogit") {
-      1 / (1 + exp(-theta[j]))
+      log(theta[j])  # (0, inf) to R
+    } else if (transform[j] == "logit") {
+      log(theta[j] / (1 - theta[j]))  # (0, 1) to R
     } else {
-      theta[j]
+      theta[j]  # no transformation
     }
   })
 }
@@ -97,11 +107,11 @@
 .back_transform_params <- function(theta_trans, transform) {
   sapply(seq_along(theta_trans), function(j) {
     if (transform[j] == "log") {
-      exp(theta_trans[j])
-    } else if (transform[j] == "invlogit") {
-      log(theta_trans[j] / (1 - theta_trans[j])) # back-transforming from logit
+      exp(theta_trans[j])  # R to (0, inf)
+    } else if (transform[j] == "logit") {
+      1 / (1 + exp(-theta_trans[j]))  # R to (0, inf)
     } else {
-      theta_trans[j]
+      theta_trans[j]  # no transformation
     }
   })
 }
@@ -117,12 +127,11 @@
 .compute_log_jacobian <- function(theta, transform) {
   sum(sapply(seq_along(theta), function(j) {
     if (transform[j] == "log") {
-      log(theta[j]) # log|dx/dz| = log(x)
-    } else if (transform[j] == "invlogit") {
-      val <- 1 / (1 + exp(-theta[j])) # inverse logit
-      log(val * (1 - val)) # log|dx/dz| = log(x * (1 - x))
+      log(theta[j])  # log|dx/dz| = log(x)
+    } else if (transform[j] == "logit") {
+      log(1 / (theta[j] * (1 - theta[j])))  # log|dx/dz|=log(1 / (x * (1 - x)))
     } else {
-      0 # no transformation
+      0  # no transformation
     }
   }))
 }

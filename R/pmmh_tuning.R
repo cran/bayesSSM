@@ -5,33 +5,10 @@
 #' target number of particles for the Particle Marginal Metropolis Hastings
 #' (PMMH) algorithm.
 #'
-#' @param y A numeric vector or matrix of observations. Each row represents an
-#' observation at a time step.
+#' @inheritParams particle_filter
 #' @param pilot_n An integer specifying the initial number of particles to use.
 #' @param pilot_reps An integer specifying the number of repetitions for the
 #' pilot run.
-#' @param init_fn A function that initializes the particle states. It should
-#' take the current particles as its first argument and return
-#' a vector or matrix of initial particle states.
-#' @param transition_fn A function describing the state transition model. It
-#' should take the current particles and the current time step as arguments and
-#' return the propagated particles.
-#' @param log_likelihood_fn A function that computes the log likelihoods for the
-#' particles. It should accept an observation, the current particles, and the
-#' current time step as arguments and return a numeric vector of log likelihood
-#' values.
-#' @param obs_times A numeric vector indicating the time points at which
-#' observations in \code{y} are available. Must be of the same length as the
-#' number of rows in \code{y}. If not specified, it is assumed that observations
-#' are available at consecutive time steps, i.e., \code{obs_times = 1:nrow(y)}.
-#' @param algorithm A character string specifying the particle filtering
-#' algorithm to use. Must be one of \code{"SISAR"}, \code{"SISR"}, or
-#' \code{"SIS"}. Defaults to \code{"SISAR"}.
-#' @param resample_fn A character string specifying the resampling method.
-#' Must be one of \code{"stratified"}, \code{"systematic"}, or
-#' \code{"multinomial"}. Defaults to \code{"stratified"}.
-#' @param ... Additional arguments passed to `init_fn`,
-#' `transition_fn`, and `log_likelihood_fn`.
 #'
 #' @return A list containing:
 #' \describe{
@@ -49,15 +26,14 @@
 #' the scaled value with a minimum of 50 and a maximum of 1000.
 #'
 #' @keywords internal
-.pilot_run <- function(y, pilot_n, pilot_reps, init_fn,
-                       transition_fn, log_likelihood_fn,
-                       obs_times = NULL,
-                       algorithm = c("SISAR", "SISR", "SIS"),
-                       resample_fn = c(
-                         "stratified", "systematic",
-                         "multinomial"
-                       ),
-                       ...) {
+#' @noRd
+.pilot_run <- function(
+  y, pilot_n, pilot_reps, init_fn, transition_fn, log_likelihood_fn,
+  obs_times = NULL,
+  algorithm = c("SISAR", "SISR", "SIS"),
+  resample_fn = c("stratified", "systematic", "multinomial"),
+  ...
+) {
   pilot_loglikes <- numeric(pilot_reps)
   for (i in seq_len(pilot_reps)) {
     pf_result <- particle_filter(
@@ -88,29 +64,17 @@
 
 #' Run Pilot Chain for Posterior Estimation
 #'
-#' @param y A numeric vector of observations.
+#' @inheritParams particle_filter
 #' @param pilot_m An integer specifying the number of iterations for the pilot
 #' chain.
 #' @param pilot_n An integer specifying the number of particles for the particle
 #' filter.
 #' @param pilot_reps An integer specifying the number of repetitions for the
 #' pilot run.
-#' @param init_fn A function to initialize the state space model.
-#' @param transition_fn A function that defines the state transition
-#' dynamics in the state space model.
-#' @param log_likelihood_fn A function that computes the log-likelihood of
-#' the observations given the model parameters.
 #' @param log_priors A list of functions representing the log-priors for each
 #' model parameter.
 #' @param proposal_sd A numeric vector specifying the standard deviations for
 #' the random walk proposal distribution for each parameter.
-#' @param obs_times A numeric vector of observation times. If not provided,
-#' the function assumes observations are available at every time step.
-#' @param algorithm A character string specifying the particle filter algorithm
-#' to use. One of "SISAR", "SISR", or "SIS". Default is "SISAR".
-#' @param resample_fn A character string specifying the resampling method to
-#' use. One of "stratified", "systematic", or "multinomial". Default is
-#' "stratified".
 #' @param param_transform A character vector specifying the parameter
 #' transformations when proposing parameters using a random walk.
 #' Currently only supports "log" for log-transformation and
@@ -142,19 +106,18 @@
 #'
 #' @importFrom stats rnorm runif var cov
 #' @keywords internal
-.run_pilot_chain <- function(y, pilot_m, pilot_n, pilot_reps, init_fn,
-                             transition_fn, log_likelihood_fn,
-                             log_priors, proposal_sd,
-                             obs_times = NULL,
-                             algorithm = c("SISAR", "SISR", "SIS"),
-                             resample_fn = c(
-                               "stratified", "systematic",
-                               "multinomial"
-                             ),
-                             param_transform = NULL,
-                             pilot_init_params = NULL,
-                             verbose = FALSE,
-                             ...) {
+#' @noRd
+.run_pilot_chain <- function(
+  y, pilot_m, pilot_n, pilot_reps, init_fn, transition_fn, log_likelihood_fn,
+  log_priors, proposal_sd,
+  obs_times = NULL,
+  algorithm = c("SISAR", "SISR", "SIS"),
+  resample_fn = c("stratified", "systematic", "multinomial"),
+  param_transform = NULL,
+  pilot_init_params = NULL,
+  verbose = FALSE,
+  ...
+) {
   num_params <- length(log_priors)
   pilot_theta_chain <- matrix(NA, nrow = pilot_m, ncol = num_params)
   colnames(pilot_theta_chain) <- names(log_priors)
@@ -189,7 +152,8 @@
       log_likelihood_fn = log_likelihood_fn,
       obs_times = obs_times,
       algorithm = algorithm,
-      resample_fn = "stratified"
+      resample_fn = "stratified",
+      return_particles = FALSE
     ),
     current_theta_list,
     list(...)
@@ -285,7 +249,8 @@
         log_likelihood_fn = log_likelihood_fn,
         obs_times = obs_times,
         algorithm = algorithm,
-        resample_fn = resample_fn
+        resample_fn = resample_fn,
+        return_particles = FALSE
       ),
       proposed_theta_list,
       list(...)

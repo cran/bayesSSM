@@ -13,18 +13,16 @@ library(ggplot2)
 ## -----------------------------------------------------------------------------
 set.seed(1405)
 t_val <- 20
-phi <- 0.8
 sigma_x <- 1
 sigma_y <- 0.5
 
 init_state <- rnorm(1, mean = 0, sd = 1)
 x <- numeric(t_val)
 y <- numeric(t_val)
-x[1] <- phi * init_state + sin(init_state) +
-  rnorm(1, mean = 0, sd = sigma_x)
+x[1] <- sin(init_state) + rnorm(1, mean = 0, sd = sigma_x)
 y[1] <- x[1] + rnorm(1, mean = 0, sd = sigma_y)
 for (t in 2:t_val) {
-  x[t] <- phi * x[t - 1] + sin(x[t - 1]) + rnorm(1, mean = 0, sd = sigma_x)
+  x[t] <- sin(x[t - 1]) + rnorm(1, mean = 0, sd = sigma_x)
   y[t] <- x[t] + rnorm(1, mean = 0, sd = sigma_y)
 }
 x <- c(init_state, x)
@@ -46,9 +44,8 @@ init_fn <- function(num_particles) {
   rnorm(num_particles, mean = 0, sd = 1)
 }
 
-transition_fn <- function(particles, phi, sigma_x) {
-  phi * particles + sin(particles) +
-    rnorm(length(particles), mean = 0, sd = sigma_x)
+transition_fn <- function(particles, sigma_x) {
+  sin(particles) + rnorm(length(particles), mean = 0, sd = sigma_x)
 }
 
 log_likelihood_fn <- function(y, particles, sigma_y) {
@@ -56,10 +53,6 @@ log_likelihood_fn <- function(y, particles, sigma_y) {
 }
 
 ## -----------------------------------------------------------------------------
-log_prior_phi <- function(phi) {
-  dunif(phi, min = 0, max = 1, log = TRUE)
-}
-
 log_prior_sigma_x <- function(sigma) {
   dexp(sigma, rate = 1, log = TRUE)
 }
@@ -69,7 +62,6 @@ log_prior_sigma_y <- function(sigma) {
 }
 
 log_priors <- list(
-  phi = log_prior_phi,
   sigma_x = log_prior_sigma_x,
   sigma_y = log_prior_sigma_y
 )
@@ -83,14 +75,13 @@ result <- pmmh(
   log_likelihood_fn = log_likelihood_fn,
   log_priors = log_priors,
   pilot_init_params = list(
-    c(phi = 0.4, sigma_x = 0.4, sigma_y = 0.4),
-    c(phi = 0.8, sigma_x = 0.8, sigma_y = 0.8)
+    c(sigma_x = 0.4, sigma_y = 0.4),
+    c(sigma_x = 0.8, sigma_y = 0.8)
   ),
   burn_in = 500,
   num_chains = 2,
   seed = 1405,
   param_transform = list(
-    phi = "logit",
     sigma_x = "log",
     sigma_y = "log"
   ),
@@ -105,10 +96,10 @@ print(result)
 chains <- result$theta_chain
 
 ## -----------------------------------------------------------------------------
-ggplot(chains, aes(x = phi, fill = factor(chain))) +
+ggplot(chains, aes(x = sigma_x, fill = factor(chain))) +
   geom_density(alpha = 0.5) +
   labs(
-    title = "Density plot of phi chains",
+    title = "Density plot of sigma_x chains",
     x = "Value",
     y = "Density",
     fill = "Chain"

@@ -70,23 +70,8 @@ default_tune_control <- function(
 #' runs a pilot chain to tune the proposal distribution and the number of
 #' particles for the particle filter, and then runs the main PMMH chain.
 #'
-#' @param y A numeric vector or matrix of observations. Each row represents an
-#' observation at a time step.
+#' @inheritParams particle_filter
 #' @param m An integer specifying the total number of MCMC iterations.
-#' @param init_fn A function that initializes the particle states. It should
-#' take `num_particles` as an argument for initializing the particles and return
-#' a vector or matrix of initial particle states. It can include any
-#' model-specific parameters as named arguments.
-#' @param transition_fn A function describing the state transition model. It
-#' should take `particles` as an argument and return the propagated particles.
-#' The function can optionally depend on time by including a time step argument
-#' `t`. It can include any model-specific parameters as named arguments.
-#' @param log_likelihood_fn A function that computes the log-likelihoods for the
-#' particles. It should take a `y` argument for the observations,
-#' the current particles, and return a numeric vector of log-likelihood
-#' values. The function can optionally depend on time by including a time step
-#' argument `t`. It can include any model-specific parameters as named
-#' arguments.
 #' @param log_priors A list of functions for computing the log-prior of each
 #' parameter.
 #' @param pilot_init_params A list of initial parameter values. Should be a list
@@ -95,16 +80,6 @@ default_tune_control <- function(
 #' @param burn_in An integer indicating the number of initial MCMC iterations
 #' to discard as burn-in.
 #' @param num_chains An integer specifying the number of PMMH chains to run.
-#' @param obs_times A numeric vector indicating the time points at which
-#' observations in \code{y} are available. Must be of the same length as the
-#' number of rows in \code{y}. If not specified, it is assumed that observations
-#' are available at consecutive time steps, i.e., \code{obs_times = 1:nrow(y)}.
-#' @param algorithm A character string specifying the particle filtering
-#' algorithm to use. Must be one of \code{"SISAR"}, \code{"SISR"}, or
-#' \code{"SIS"}. Defaults to \code{"SISAR"}.
-#' @param resample_fn A character string specifying the resampling method.
-#' Must be one of \code{"stratified"}, \code{"systematic"}, or
-#' \code{"multinomial"}. Defaults to \code{"stratified"}.
 #' @param param_transform An optional character vector that specifies the
 #' transformation applied to each parameter before proposing. The proposal is
 #' made using a multivariate normal distribution on the transformed scale.
@@ -113,7 +88,7 @@ default_tune_control <- function(
 #' If \code{NULL}, the \code{"identity"} transformation is used for all
 #' parameters.
 #' @param tune_control A list of pilot tuning controls
-#' (e.g., \code{pilot\_m}, \code{pilot\_reps}).
+#' (e.g., \code{pilot_m}, \code{pilot_reps}).
 #' See \code{\link{default_tune_control}}.
 #' @param verbose A logical value indicating whether to print information about
 #' pilot_run tuning. Defaults to \code{FALSE}.
@@ -127,11 +102,13 @@ default_tune_control <- function(
 #' using more than one core.
 #'
 #' @details The PMMH algorithm is essentially a Metropolis Hastings algorithm
-#' where instead of using the exact likelihood it instead uses an estimated
-#' using likelihood using a particle filter (see also
-#' \code{\link{particle_filter}}). Values are proposed using a multivariate
-#' normal distribution in the transformed space. The proposal covariance is
-#' estimated using the pilot chain.
+#' where instead of using the intractable marginal likelihood
+#' \eqn{p(y_{1:T}\mid \theta)} it instead uses the estimated likelihood using
+#' a particle filter (see also \code{\link{particle_filter}}). Values are
+#' proposed using a multivariate normal distribution in the transformed space.
+#' The proposal covariance and the number of particles is chosen based on a
+#' pilot run. The minimum number of particles is chosen as 50 and maximum as
+#' 1000.
 #'
 #' @return A list containing:
 
@@ -257,7 +234,11 @@ pmmh <- function(y, m, init_fn, transition_fn, log_likelihood_fn,
                  return_latent_state_est = FALSE,
                  seed = NULL,
                  num_cores = 1) {
-  if (!is.null(seed)) set.seed(seed)
+  if (!is.null(seed)) {
+    set.seed(seed)
+  } else {
+    seed <- sample.int(.Machine$integer.max, 1) # Random seed if not provided
+  }
   # ---------------------------
   # Input validation
   # ---------------------------
@@ -372,8 +353,10 @@ pmmh <- function(y, m, init_fn, transition_fn, log_likelihood_fn,
   # ---------------------------
   # Define inner function for a single chain run
   # ---------------------------
-  chain_result <- function(chain_index) {
+  chain_result <- function(chain_index, seed) {
+    set.seed(seed)
     message("Running chain ", chain_index, "...")
+
     # ---------------------------
     # Step 1: Run the pilot (particle) chain for tuning
     # ---------------------------
@@ -435,7 +418,8 @@ pmmh <- function(y, m, init_fn, transition_fn, log_likelihood_fn,
         log_likelihood_fn = log_likelihood_fn,
         obs_times = obs_times,
         algorithm = algorithm,
-        resample_fn = resample_fn
+        resample_fn = resample_fn,
+        return_particles = FALSE
       ),
       as.list(current_theta)
     ))
@@ -477,7 +461,8 @@ pmmh <- function(y, m, init_fn, transition_fn, log_likelihood_fn,
           log_likelihood_fn = log_likelihood_fn,
           obs_times = obs_times,
           algorithm = algorithm,
-          resample_fn = resample_fn
+          resample_fn = resample_fn,
+          return_particles = FALSE
         ),
         as.list(proposed_theta)
       ))
@@ -518,7 +503,6 @@ pmmh <- function(y, m, init_fn, transition_fn, log_likelihood_fn,
       theta_chain[i, ] <- current_theta
       state_est_chain[[i]] <- current_state_est
     }
-
     list(theta_chain = theta_chain,
          state_est_chain = state_est_chain)
   }
@@ -526,13 +510,15 @@ pmmh <- function(y, m, init_fn, transition_fn, log_likelihood_fn,
   # ---------------------------
   # Run chains (in parallel if more than one core is requested)
   # ---------------------------
+  # Generate seeds
+  seeds <- sample.int(.Machine$integer.max, num_chains)
   if (num_cores > 1) {
     tryCatch({
       # Execute the future parallel code
       chain_results <- future.apply::future_lapply(
         1:num_chains,
-        function(i) chain_result(i), # Pass the current index to chain_result
-        future.seed = TRUE
+        function(i) chain_result(i, seeds[i]),
+        future.seed = NULL
       )
     }, error = function(e) {
       message("An error occurred: ", e$message)
@@ -543,7 +529,7 @@ pmmh <- function(y, m, init_fn, transition_fn, log_likelihood_fn,
   } else {
     chain_results <- lapply(
       1:num_chains,
-      function(i) chain_result(i) # Pass the current index to chain_result
+      function(i) chain_result(i, seeds[i])
     )
   }
 

@@ -8,6 +8,8 @@
 [![Codecov test
 coverage](https://codecov.io/gh/BjarkeHautop/bayesSSM/graph/badge.svg)](https://app.codecov.io/gh/BjarkeHautop/bayesSSM)
 [![R-CMD-check](https://github.com/BjarkeHautop/bayesSSM/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/BjarkeHautop/bayesSSM/actions/workflows/R-CMD-check.yaml)
+[![CRAN_Status_Badge](https://www.r-pkg.org/badges/version/bayesSSM)](https://cran.r-project.org/package=bayesSSM)
+[![CRAN_Downloads](https://cranlogs.r-pkg.org/badges/bayesSSM)](https://cran.r-project.org/package=bayesSSM)
 <!-- badges: end -->
 
 bayesSSM is an R package offering a set of tools for performing Bayesian
@@ -19,9 +21,51 @@ Bayesian inference in SSMs.
 
 While there are several alternative packages available for performing
 Particle MCMC, bayesSSM is designed to be simple and easy to use. It was
-alongside my Master’s thesis about Particle MCMC, since I was
-implementing everything from scratch anyway. Everything is written in R,
-so performance is not the best.
+developed alongside my Master’s thesis about Particle MCMC, since I was
+implementing everything from scratch anyway.
+
+## Why PMCMC?
+
+In some state-space models, the full joint density of latent states and
+observations
+
+![](man/figures/joint_posterior.png)
+
+can be written out explicitly. In these cases, inference tools like Stan
+(which uses Hamiltonian Monte Carlo) are very efficient.
+
+However, many real-world models define the latent dynamics only through
+a **simulator**, not via an explicit transition density. This includes:
+
+- Epidemic models with stochastic transmission dynamics
+- Agent-based models
+- Ecological or physical systems with complex latent dynamics
+
+In these cases, the joint posterior density cannot be computed directly,
+and the marginal likelihood is intractable. Thus, standard MCMC methods
+like Hamiltonian Monte Carlo (HMC) or Metropolis-Hastings (MH) cannot be
+applied directly.
+
+The Particle Markov Chain Monte Carlo (PMCMC) methods, such as the
+Particle Marginal Metropolis-Hastings (PMMH) implemented in this
+package, are designed to handle these situations. They use particle
+filters to approximate the marginal likelihood and allow for efficient
+sampling from the posterior density of the latent states and parameters.
+
+## State-space Models
+
+A state-space model (SSM) has the structure given in the following
+diagram, where we omitted potential time dependency in the transition
+and observation densities for simplicity.
+
+![](man/figures/DAG_SSM.png)
+
+The core function, `pmmh`, implements Particle Marginal
+Metropolis-Hastings, which is an algorithm that first generates a set of
+$N$ particles to approximate the intractable marginal likelihood and
+then uses this approximation in the acceptance probability. The
+implementation automatically tunes the number of particles and the
+proposal distribution for the parameters.
 
 ## Installation
 
@@ -40,15 +84,17 @@ pak::pak("BjarkeHautop/bayesSSM")
 
 ## Example
 
-Consider the following SSM:
+To illustrate how to use the `pmmh` function, we will simulate a simple
+state-space model (SSM) and perform Bayesian inference on it. Note:
+While this example uses `pmmh`, the model is simple enough that standard
+MCMC methods could also be applied. For a more complicated example where
+standard MCMC methods cannot be used, see the article Stochastic SIR
+Model article
+[here](https://bjarkehautop.github.io/bayesSSM/articles/stochastic-sir-model.html).
 
-$$
-\begin{aligned}
-        X_0 &\sim N(0,1) \\
-        X_t&=\phi X_{t-1}+\sin(X_{t-1})+\sigma_x V_t, \quad V_t \sim N(0,1), \quad t\geq 1 \\
-        Y_t&=X_t+\sigma_y W_t, \quad W_t \sim N(0, 1), \quad t\geq 1 
-\end{aligned}
-$$
+We will simulate a state-space model with the following structure:
+
+![](man/figures/SSM_equation.png)
 
 Let’s first simulate 20 data points from this model with $\phi = 0.8$,
 $\sigma_x = 1$, and $\sigma_y = 0.5$.
@@ -75,19 +121,13 @@ x <- c(init_state, x)
 
 We define the priors for our model as follows:
 
-$$
-\begin{aligned}
-        \phi &\sim \text{Uniform}(0,1), \\
-        \sigma_x &\sim \text{Exp}(1), \\
-        \sigma_y &\sim \text{Exp}(1).
-\end{aligned}
-$$
+![](man/figures/priors.png)
 
 We can use `pmmh` to perform Bayesian inference on this model. To use
 `pmmh` we need to define the functions for the SSM and the priors.
 
 The functions `init_fn`, `transition_fn` should be functions that
-simulates the latent states. `init_fn` must contain the argument
+simulate the latent states. `init_fn` must contain the argument
 `num_particles` for initializing the particles, and `transition_fn` must
 contain the argument `particles`, which is a vector of particles, and
 can contain any other arguments for model-specific parameters.
@@ -95,7 +135,7 @@ can contain any other arguments for model-specific parameters.
 The function `log_likelihood_fn` should be a function that calculates
 the log-likelihood of the observed data given the latent state
 variables. It must contain the arguments `y` for the data and
-`particles`. Time-dependency can be implemented by giving a `t` argument
+`particles`. Time dependency can be implemented by giving a `t` argument
 in `transition_fn` and `log_likelihood_fn`.
 
 ``` r
@@ -135,8 +175,8 @@ log_priors <- list(
 
 Now we can run the PMMH algorithm using the `pmmh` function. For this
 README we use a lower number of samples and a smaller burn-in period,
-and also modify the pilot chains to only use 200 samples. This is to
-make the example run faster.
+and also modify the pilot chains to only use 200 samples. This is done
+to make the example run faster.
 
 ``` r
 library(bayesSSM)
@@ -159,17 +199,17 @@ result <- pmmh(
 )
 #> Running chain 1...
 #> Running pilot chain for tuning...
-#> Using 298 particles for PMMH:
+#> Using 50 particles for PMMH:
 #> Running Particle MCMC chain with tuned settings...
 #> Running chain 2...
 #> Running pilot chain for tuning...
-#> Using 242 particles for PMMH:
+#> Using 50 particles for PMMH:
 #> Running Particle MCMC chain with tuned settings...
 #> PMMH Results Summary:
 #>  Parameter Mean   SD Median 2.5% 97.5% ESS  Rhat
-#>        phi 0.78 0.08   0.79 0.61  0.96 102 1.007
-#>    sigma_x 0.50 0.41   0.36 0.02  1.18   8 1.388
-#>    sigma_y 0.88 0.42   1.04 0.09  1.37   7 1.393
+#>        phi 0.80 0.10   0.82 0.60  0.97  10 1.228
+#>    sigma_x 0.58 0.50   0.46 0.00  1.71   2 1.376
+#>    sigma_y 0.97 0.35   1.05 0.13  1.46   5 1.272
 #> Warning in pmmh(y = y, m = 500, init_fn = init_fn, transition_fn =
 #> transition_fn, : Some ESS values are below 400, indicating poor mixing.
 #> Consider running the chains for more iterations.
@@ -180,18 +220,3 @@ result <- pmmh(
 
 We get convergence warnings as expected due to the small number of
 iterations.
-
-## State-space Models
-
-A state-space model (SSM) has the structure given in the following
-diagram, where we omitted potential time-dependency in the transition
-and observation densities for simplicity.
-
-![](man/figures/DAG_SSM.png)
-
-The core function, `pmmh`, implements the Particle Marginal
-Metropolis-Hastings, which is an algorithm that first generates a set of
-$N$ particles to approximate the likelihood and then uses this
-approximation in the acceptance probability. The implementation
-automatically tunes the number of particles and the proposal
-distribution for the parameters.

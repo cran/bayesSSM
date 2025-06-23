@@ -27,7 +27,9 @@ pmmh(
 }
 \arguments{
 \item{y}{A numeric vector or matrix of observations. Each row represents an
-observation at a time step.}
+observation at a time step. If observations not equally spaced, use the
+\code{obs_times} argument to specify the time points at which
+observations are available.}
 
 \item{m}{An integer specifying the total number of MCMC iterations.}
 
@@ -82,7 +84,7 @@ If \code{NULL}, the \code{"identity"} transformation is used for all
 parameters.}
 
 \item{tune_control}{A list of pilot tuning controls
-(e.g., \code{pilot\_m}, \code{pilot\_reps}).
+(e.g., \code{pilot_m}, \code{pilot_reps}).
 See \code{\link{default_tune_control}}.}
 
 \item{verbose}{A logical value indicating whether to print information about
@@ -119,11 +121,13 @@ particles for the particle filter, and then runs the main PMMH chain.
 }
 \details{
 The PMMH algorithm is essentially a Metropolis Hastings algorithm
-where instead of using the exact likelihood it instead uses an estimated
-using likelihood using a particle filter (see also
-\code{\link{particle_filter}}). Values are proposed using a multivariate
-normal distribution in the transformed space. The proposal covariance is
-estimated using the pilot chain.
+where instead of using the intractable marginal likelihood
+\eqn{p(y_{1:T}\mid \theta)} it instead uses the estimated likelihood using
+a particle filter (see also \code{\link{particle_filter}}). Values are
+proposed using a multivariate normal distribution in the transformed space.
+The proposal covariance and the number of particles is chosen based on a
+pilot run. The minimum number of particles is chosen as 50 and maximum as
+1000.
 }
 \examples{
 init_fn <- function(num_particles) {

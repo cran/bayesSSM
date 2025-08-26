@@ -11,7 +11,7 @@ default_tune_control(
   pilot_target_var = 1,
   pilot_burn_in = 500,
   pilot_reps = 100,
-  pilot_algorithm = c("SISAR", "SISR", "SIS"),
+  pilot_resample_algorithm = c("SISAR", "SISR", "SIS"),
   pilot_resample_fn = c("stratified", "systematic", "multinomial")
 )
 }
@@ -30,11 +30,11 @@ evaluated at estimated posterior mean. Default is 1.}
 
 \item{pilot_reps}{Number of times a particle filter is run. Default is 100.}
 
-\item{pilot_algorithm}{The algorithm used for the pilot particle filter.
-Default is "SISAR".}
+\item{pilot_resample_algorithm}{The resample_algorithm used for the pilot
+particle filter. Default is \code{"SISAR"}.}
 
 \item{pilot_resample_fn}{The resampling function used for the pilot particle
-filter. Default is "stratified".}
+filter. Default is \code{"stratified"}.}
 }
 \value{
 A list of tuning control parameters.

@@ -1,4 +1,4 @@
-test_that("particle_filter returns errors on wrong input", {
+test_that("bootstrap_filter returns errors on wrong input", {
   init_fn <- function(num_particles) rep(0, num_particles)
   transition_fn <- function(particles) particles + 1
   log_likelihood_fn <- function(y, particles) rep(1, length(particles))
@@ -17,94 +17,102 @@ test_that("particle_filter returns errors on wrong input", {
   wrong_y <- "hi"
 
   expect_error(
-    particle_filter(y,
+    bootstrap_filter(y,
       num_particles = 0, init_fn, transition_fn,
-      log_likelihood_fn, algorithm = "SIS"
+      log_likelihood_fn, resample_algorithm = "SISR"
     ),
-    "particles must be a positive integer"
+    "Assertion on 'num_particles' failed"
   )
 
   expect_error(
-    particle_filter(y,
+    bootstrap_filter(y,
       num_particles = 10, wrong_init_fn, transition_fn,
-      log_likelihood_fn, algorithm = "SIS"
+      log_likelihood_fn, resample_algorithm = "SISR"
     ),
-    "init_fn must return a length of num_particles"
+    "init_fn must return num_particles"
   )
 
   expect_error(
-    particle_filter(
-      y, num_particles = 10, wrong_init_fn_matrix, transition_fn,
-      log_likelihood_fn, algorithm = "SIS"
+    bootstrap_filter(
+      y,
+      num_particles = 10, wrong_init_fn_matrix, transition_fn,
+      log_likelihood_fn, resample_algorithm = "SISR"
     ),
     "init_fn must return num_particles rows"
   )
 
   expect_error(
-    particle_filter(
-      y, num_particles = 10, init_fn, wrong_transition_fn,
-      log_likelihood_fn, algorithm = "SIS"
+    bootstrap_filter(
+      y,
+      num_particles = 10, init_fn, wrong_transition_fn,
+      log_likelihood_fn, resample_algorithm = "SISR"
     ),
-    "transition_fn must return a length of num_particles"
+    "transition_fn must return num_particles"
   )
 
   expect_error(
-    particle_filter(
-      y, num_particles = 10, init_fn, transition_fn,
-      wrong_log_likelihood_fn, algorithm = "SIS"
+    bootstrap_filter(
+      y,
+      num_particles = 10, init_fn, transition_fn,
+      wrong_log_likelihood_fn, resample_algorithm = "SISR"
     ),
-    "log_likelihood_fn must return num_particles values"
+    "weight_fn must return num_particles"
   )
 
   expect_error(
-    particle_filter(
-      wrong_y, num_particles = 10, init_fn, transition_fn,
+    bootstrap_filter(
+      wrong_y,
+      num_particles = 10, init_fn, transition_fn,
       log_likelihood_fn
     ),
-    "y must be numeric"
+    "Assertion on 'y' failed"
   )
 
   wrong_len_obs_times <- 1:4
 
   expect_error(
-    particle_filter(
-      y, num_particles = 10, init_fn, transition_fn, log_likelihood_fn,
+    bootstrap_filter(
+      y,
+      num_particles = 10, init_fn, transition_fn, log_likelihood_fn,
       obs_times = wrong_len_obs_times
     ),
-    "obs_times must match rows of y"
+    "Assertion on 'obs_times' failed"
   )
 
   not_numeric_obs_times <- "hi"
 
   expect_error(
-    particle_filter(
-      y, num_particles = 10, init_fn, transition_fn, log_likelihood_fn,
+    bootstrap_filter(
+      y,
+      num_particles = 10, init_fn, transition_fn, log_likelihood_fn,
       obs_times = not_numeric_obs_times
     ),
-    "obs_times must be numeric"
+    "Assertion on 'obs_times' failed"
   )
 
   non_integer_obs_times <- c(1.5, 2.5, 3.5, 4.5, 5.5)
   expect_error(
-    particle_filter(
-      y, num_particles = 10, init_fn, transition_fn, log_likelihood_fn,
+    bootstrap_filter(
+      y,
+      num_particles = 10, init_fn, transition_fn, log_likelihood_fn,
       obs_times = non_integer_obs_times
     ),
-    "obs_times must be integers"
+    "Assertion on 'obs_times' failed"
   )
 
   non_inc_obs_times <- c(1, 2, 3, 5, 4)
   expect_error(
-    particle_filter(
-      y, num_particles = 10, init_fn, transition_fn, log_likelihood_fn,
+    bootstrap_filter(
+      y,
+      num_particles = 10, init_fn, transition_fn, log_likelihood_fn,
       obs_times = non_inc_obs_times
     ),
-    "obs_times must be strictly increasing"
+    "Assertion on 'obs_times' failed"
   )
 })
 
 
-test_that("particle_filter returns correct structure", {
+test_that("bootstrap_filter returns correct structure", {
   init_fn <- function(num_particles) rep(0, num_particles)
   transition_fn <- function(particles) particles + 1
   log_likelihood_fn <- function(y, particles) rep(1, length(particles))
@@ -112,18 +120,18 @@ test_that("particle_filter returns correct structure", {
   # A simple observation vector for testing (5 time steps)
   y <- rep(0, 5)
 
-  result <- particle_filter(y,
+  result <- bootstrap_filter(y,
     num_particles = 10, init_fn, transition_fn, log_likelihood_fn,
-    algorithm = "SIS"
+    resample_algorithm = "SIS"
   )
   expect_true(is.list(result))
   expect_true("state_est" %in% names(result))
   expect_true("ess" %in% names(result))
-  expect_true("algorithm" %in% names(result))
+  expect_true("resample_algorithm" %in% names(result))
   expect_true("particles_history" %in% names(result))
 })
 
-test_that("particle_filter returns no particles_history when requested", {
+test_that("bootstrap_filter returns no particles_history when requested", {
   init_fn <- function(num_particles) rep(0, num_particles)
   transition_fn <- function(particles) particles + 1
   log_likelihood_fn <- function(y, particles) rep(1, length(particles))
@@ -131,14 +139,14 @@ test_that("particle_filter returns no particles_history when requested", {
   # A simple observation vector for testing (5 time steps)
   y <- rep(0, 5)
 
-  result <- particle_filter(y,
+  result <- bootstrap_filter(y,
     num_particles = 10, init_fn, transition_fn, log_likelihood_fn,
-    algorithm = "SIS", return_particles = FALSE
+    resample_algorithm = "SIS", return_particles = FALSE
   )
   expect_false("particles_history" %in% names(result))
 })
 
-test_that("particle_filter works non-trivial setup", {
+test_that("bootstrap_filter works non-trivial setup", {
   set.seed(1405)
   # Works with more complicated setup
   init_fn_ssm <- function(num_particles) {
@@ -171,7 +179,7 @@ test_that("particle_filter works non-trivial setup", {
   }
   my_data <- simulate_ssm(50, phi = 0.8, sigma_x = 1, sigma_y = 0.5)
 
-  result <- particle_filter(
+  result <- bootstrap_filter(
     y = my_data$y,
     num_particles = 100,
     init_fn = init_fn_ssm,
@@ -180,7 +188,7 @@ test_that("particle_filter works non-trivial setup", {
     phi = 0.8,
     sigma_x = 1,
     sigma_y = 0.5,
-    algorithm = "SISAR",
+    resample_algorithm = "SISAR",
     resample_fn = "systematic"
   )
   # Expect length of result$state_est to be equal to length of x
@@ -210,32 +218,13 @@ test_that("Multi-dim particle filter works", {
   # A vector of observation
   y <- rep(0, 5)
 
-  result <- particle_filter(y,
+  result <- bootstrap_filter(y,
     num_particles = 10, init_fn, transition_fn, log_likelihood_fn,
-    algorithm = "SIS"
+    resample_algorithm = "SIS"
   )
   expect_true(is.list(result))
   expect_true("state_est" %in% names(result))
   expect_true("ess" %in% names(result))
-  expect_true("algorithm" %in% names(result))
+  expect_true("resample_algorithm" %in% names(result))
   expect_true("particles_history" %in% names(result))
-})
-
-# Check deprecate warning
-test_that("Deprecation warning for particles argument in init_fn", {
-  init_fn <- function(particles) rep(0, particles)
-  transition_fn <- function(particles) particles + 1
-  log_likelihood_fn <- function(y, particles) rep(1, length(particles))
-
-  # A simple observation vector for testing (5 time steps)
-  y <- rep(0, 5)
-  rlang::local_options(lifecycle_verbosity = "error")
-
-  expect_error(
-    particle_filter(y,
-      num_particles = 10, init_fn, transition_fn,
-      log_likelihood_fn
-    ),
-    class = "defunctError"
-  )
 })

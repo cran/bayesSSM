@@ -1,7 +1,7 @@
 Package: bayesSSM
 Type: Package
 Title: Bayesian Methods for State Space Models
-Version: 0.6.1
+Version: 0.7.0
 Authors@R: c(
     person(
       "Bjarke", "Hautop",
@@ -18,7 +18,7 @@ Description: Implements methods for Bayesian analysis of State Space Models.
 License: MIT + file LICENSE
 Encoding: UTF-8
 RoxygenNote: 7.3.2
-Imports: MASS, stats, dplyr, future, future.apply, lifecycle, Rcpp
+Imports: MASS, stats, dplyr, future, future.apply, Rcpp, checkmate
 LinkingTo: Rcpp
 Suggests: knitr, rmarkdown, testthat (>= 3.0.0), ggplot2, tidyr,
         extraDistr, rlang, expm
@@ -29,8 +29,8 @@ BugReports: https://github.com/BjarkeHautop/bayesSSM/issues
 VignetteBuilder: knitr
 Config/Needs/website: rmarkdown
 NeedsCompilation: yes
-Packaged: 2025-06-23 10:22:36 UTC; bjark
+Packaged: 2025-08-26 10:41:22 UTC; bjark
 Author: Bjarke Hautop [aut, cre, cph]
 Maintainer: Bjarke Hautop <bjarke.hautop@gmail.com>
 Repository: CRAN
-Date/Publication: 2025-06-23 10:40:06 UTC
+Date/Publication: 2025-08-26 11:00:07 UTC

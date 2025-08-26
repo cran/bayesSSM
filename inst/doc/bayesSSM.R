@@ -68,6 +68,7 @@ log_priors <- list(
 
 ## -----------------------------------------------------------------------------
 result <- pmmh(
+  pf_wrapper = bootstrap_filter,
   y = y,
   m = 1000,
   init_fn = init_fn,

@@ -5,6 +5,7 @@
 \title{Particle Marginal Metropolis-Hastings (PMMH) for State-Space Models}
 \usage{
 pmmh(
+  pf_wrapper,
   y,
   m,
   init_fn,
@@ -15,40 +16,38 @@ pmmh(
   burn_in,
   num_chains = 4,
   obs_times = NULL,
-  algorithm = c("SISAR", "SISR", "SIS"),
+  resample_algorithm = c("SISAR", "SISR", "SIS"),
   resample_fn = c("stratified", "systematic", "multinomial"),
   param_transform = NULL,
   tune_control = default_tune_control(),
   verbose = FALSE,
   return_latent_state_est = FALSE,
   seed = NULL,
-  num_cores = 1
+  num_cores = 1,
+  ...
 )
 }
 \arguments{
+\item{pf_wrapper}{A particle filter wrapper function. See
+\code{\link{particle_filter}} for the particle filters implemented in
+this package.}
+
 \item{y}{A numeric vector or matrix of observations. Each row represents an
-observation at a time step. If observations not equally spaced, use the
-\code{obs_times} argument to specify the time points at which
-observations are available.}
+observation at a time step. If observations are not equally spaced, use the
+\code{obs_times} argument.}
 
-\item{m}{An integer specifying the total number of MCMC iterations.}
+\item{m}{An integer specifying the number of MCMC iterations for each chain.}
 
-\item{init_fn}{A function that initializes the particle states. It should
-take `num_particles` as an argument for initializing the particles and return
-a vector or matrix of initial particle states. It can include any
-model-specific parameters as named arguments.}
+\item{init_fn}{A function to initialize the particles. Should take
+`num_particles` and return a matrix or vector of initial states. Additional
+model parameters can be passed via \code{...}.}
 
-\item{transition_fn}{A function describing the state transition model. It
-should take `particles` as an argument and return the propagated particles.
-The function can optionally depend on time by including a time step argument
-`t`. It can include any model-specific parameters as named arguments.}
+\item{transition_fn}{A function for propagating particles. Should take
+`particles` and optionally `t`. Additional model parameters via \code{...}.}
 
-\item{log_likelihood_fn}{A function that computes the log-likelihoods for the
-particles. It should take a `y` argument for the observations,
-the current particles, and return a numeric vector of log-likelihood
-values. The function can optionally depend on time by including a time step
-argument `t`. It can include any model-specific parameters as named
-arguments.}
+\item{log_likelihood_fn}{A function that returns the log-likelihood for each
+particle given the current observation, particles, and optionally `t`.
+Additional parameters via \code{...}.}
 
 \item{log_priors}{A list of functions for computing the log-prior of each
 parameter.}
@@ -62,18 +61,26 @@ to discard as burn-in.}
 
 \item{num_chains}{An integer specifying the number of PMMH chains to run.}
 
-\item{obs_times}{A numeric vector indicating the time points at which
-observations in \code{y} are available. Must be of the same length as the
-number of rows in \code{y}. If not specified, it is assumed that observations
-are available at consecutive time steps, i.e., \code{obs_times = 1:nrow(y)}.}
+\item{obs_times}{A numeric vector specifying observation time points. Must
+match the number of rows in \code{y}, or defaults to \code{1:nrow(y)}.}
 
-\item{algorithm}{A character string specifying the particle filtering
-algorithm to use. Must be one of \code{"SISAR"}, \code{"SISR"}, or
-\code{"SIS"}. Defaults to \code{"SISAR"}.}
+\item{resample_algorithm}{A character string specifying the resampling
+algorithm to use in the particle filter. Options are:
+#'
+\itemize{
+  \item SIS: Sequential Importance Sampling (without resampling).
+  \item SISR: Sequential Importance Sampling with resampling at
+  every time step.
+  \item SISAR: SIS with adaptive resampling based on the Effective
+  Sample Size (ESS). Resampling is triggered when the ESS falls below a
+  given threshold (default \code{particles / 2}). Can be modified by
+  specifying the \code{threshold} argument (in \code{...}), see also
+  \code{\link{particle_filter}}.
+}}
 
-\item{resample_fn}{A character string specifying the resampling method.
-Must be one of \code{"stratified"}, \code{"systematic"}, or
-\code{"multinomial"}. Defaults to \code{"stratified"}.}
+\item{resample_fn}{A string indicating the resampling method:
+\code{"stratified"}, \code{"systematic"}, or \code{"multinomial"}.
+Default is \code{"stratified"}.}
 
 \item{param_transform}{An optional character vector that specifies the
 transformation applied to each parameter before proposing. The proposal is
@@ -100,6 +107,9 @@ parallel processing. Defaults to 1. Each chain is assigned to its own core,
 so the number of cores cannot exceed the number of chains
 (\code{num_chains}). The progress information given to user is limited if
 using more than one core.}
+
+\item{...}{Additional arguments passed to \code{init_fn},
+\code{transition_fn}, and \code{log_likelihood_fn}.}
 }
 \value{
 A list containing:
@@ -115,19 +125,22 @@ A list containing:
 }
 \description{
 This function implements a Particle Marginal Metropolis-Hastings (PMMH)
-algorithm to perform Bayesian inference in state-space models. It first
-runs a pilot chain to tune the proposal distribution and the number of
+resample_algorithm to perform Bayesian inference in state-space models. It
+first runs a pilot chain to tune the proposal distribution and the number of
 particles for the particle filter, and then runs the main PMMH chain.
 }
 \details{
-The PMMH algorithm is essentially a Metropolis Hastings algorithm
-where instead of using the intractable marginal likelihood
+The PMMH resample_algorithm is essentially a Metropolis Hastings
+algorithm, where instead of using the intractable marginal likelihood
 \eqn{p(y_{1:T}\mid \theta)} it instead uses the estimated likelihood using
-a particle filter (see also \code{\link{particle_filter}}). Values are
-proposed using a multivariate normal distribution in the transformed space.
+a particle filter (see \code{\link{particle_filter}} for available particle
+filters). Values are
+proposed using a multivariate normal distribution in the transformed space
+(specified using `param_transform`).
 The proposal covariance and the number of particles is chosen based on a
-pilot run. The minimum number of particles is chosen as 50 and maximum as
-1000.
+pilot run. The number of particles is chosen such that the variance of the
+log-likelihood estimate at the estimated posterior mean is approximately 1
+(with a minimum of 50 particles and a maximum of 1000).
 }
 \examples{
 init_fn <- function(num_particles) {
@@ -171,8 +184,9 @@ for (t in 2:t_val) {
 }
 x <- c(init_state, x)
 
-# Should use much higher MCMC iterations in practice (m)
+# Should use higher MCMC iterations in practice (m)
 pmmh_result <- pmmh(
+  pf_wrapper = bootstrap_filter,
   y = y,
   m = 1000,
   init_fn = init_fn,
@@ -201,6 +215,7 @@ y <- y[obs_times]
 
 # Specify observation times in the pmmh using obs_times
 pmmh_result <- pmmh(
+  pf_wrapper = bootstrap_filter,
   y = y,
   m = 1000,
   init_fn = init_fn,

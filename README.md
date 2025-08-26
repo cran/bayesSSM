@@ -26,8 +26,8 @@ implementing everything from scratch anyway.
 
 ## Why PMCMC?
 
-In some state-space models, the full joint density of latent states and
-observations
+In some state-space models, the full joint density of the parameters and
+the latent states
 
 ![](man/figures/joint_posterior.png)
 
@@ -46,11 +46,11 @@ and the marginal likelihood is intractable. Thus, standard MCMC methods
 like Hamiltonian Monte Carlo (HMC) or Metropolis-Hastings (MH) cannot be
 applied directly.
 
-The Particle Markov Chain Monte Carlo (PMCMC) methods, such as the
-Particle Marginal Metropolis-Hastings (PMMH) implemented in this
-package, are designed to handle these situations. They use particle
-filters to approximate the marginal likelihood and allow for efficient
-sampling from the posterior density of the latent states and parameters.
+Particle Markov Chain Monte Carlo (PMCMC) methods, such as the Particle
+Marginal Metropolis-Hastings (PMMH) implemented in this package, are
+designed to handle these situations. They use particle filters to
+approximate the marginal likelihood and allow for efficient sampling
+from the joint posterior density.
 
 ## State-space Models
 
@@ -89,7 +89,7 @@ state-space model (SSM) and perform Bayesian inference on it. Note:
 While this example uses `pmmh`, the model is simple enough that standard
 MCMC methods could also be applied. For a more complicated example where
 standard MCMC methods cannot be used, see the article Stochastic SIR
-Model article
+Model
 [here](https://bjarkehautop.github.io/bayesSSM/articles/stochastic-sir-model.html).
 
 We will simulate a state-space model with the following structure:
@@ -147,7 +147,7 @@ transition_fn <- function(particles, phi, sigma_x) {
     rnorm(length(particles), mean = 0, sd = sigma_x)
 }
 log_likelihood_fn <- function(y, particles, sigma_y) {
- dnorm(y, mean = particles, sd = sigma_y, log = TRUE)
+  dnorm(y, mean = particles, sd = sigma_y, log = TRUE)
 }
 ```
 
@@ -182,6 +182,7 @@ to make the example run faster.
 library(bayesSSM)
 
 result <- pmmh(
+  pf_wrapper = bootstrap_filter, # use bootstrap particle filter
   y = y,
   m = 500, # number of MCMC samples
   init_fn = init_fn,
@@ -207,13 +208,13 @@ result <- pmmh(
 #> Running Particle MCMC chain with tuned settings...
 #> PMMH Results Summary:
 #>  Parameter Mean   SD Median 2.5% 97.5% ESS  Rhat
-#>        phi 0.80 0.10   0.82 0.60  0.97  10 1.228
-#>    sigma_x 0.58 0.50   0.46 0.00  1.71   2 1.376
-#>    sigma_y 0.97 0.35   1.05 0.13  1.46   5 1.272
-#> Warning in pmmh(y = y, m = 500, init_fn = init_fn, transition_fn =
-#> transition_fn, : Some ESS values are below 400, indicating poor mixing.
-#> Consider running the chains for more iterations.
-#> Warning in pmmh(y = y, m = 500, init_fn = init_fn, transition_fn = transition_fn, : 
+#>        phi 0.76 0.12   0.75 0.55  0.97   8 1.478
+#>    sigma_x 0.78 0.56   0.74 0.01  1.85  15 1.093
+#>    sigma_y 0.89 0.36   0.94 0.22  1.45  36 1.051
+#> Warning in pmmh(pf_wrapper = bootstrap_filter, y = y, m = 500, init_fn =
+#> init_fn, : Some ESS values are below 400, indicating poor mixing. Consider
+#> running the chains for more iterations.
+#> Warning in pmmh(pf_wrapper = bootstrap_filter, y = y, m = 500, init_fn = init_fn, : 
 #> Some Rhat values are above 1.01, indicating that the chains have not converged. 
 #> Consider running the chains for more iterations and/or increase burn_in.
 ```
